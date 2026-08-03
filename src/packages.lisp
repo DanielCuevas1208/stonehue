@@ -78,6 +78,9 @@
    #:engine-time-limit
    #:engine-use-opening
    #:engine-last-stats
+   #:engine-history
+   #:engine-setup
+   #:engine-move-list
    #:engine-set-time-settings
    #:engine-set-strength
    #:engine-set-komi
@@ -86,9 +89,19 @@
    #:engine-set-use-opening
    #:strength-iterations
    #:strength-time-limit
-    ;; --- gtp ---
-    #:gtp-name
-    #:gtp-version
+   ;; --- sgf ---
+   #:parse-sgf
+   #:sgf-game-info
+   #:sgf-write-game
+   #:index-to-sgf
+   #:sgf-coord-to-index
+   #:sgf-pass-coord-p
+   #:load-sgf-file
+   #:apply-loaded-game
+   #:engine-to-sgf-text
+   ;; --- gtp ---
+   #:gtp-name
+   #:gtp-version
     #:make-gtp-server
     #:process-line
     #:run-gtp
@@ -98,7 +111,7 @@
 
 (in-package :stonehue)
 
-(defparameter +version+ "0.1.0")
+(defparameter +version+ "0.2.0")
 
 (defun version-string ()
   "Return the Stonehue version as a string."

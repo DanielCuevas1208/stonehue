@@ -114,14 +114,18 @@
       (error "Unacceptable size: ~a" (first args)))
     (let ((engine (gtp-server-engine server)))
       (setf (engine-position engine) (make-position size))
-      (setf (engine-undo-stack engine) '()))
+      (setf (engine-undo-stack engine) '())
+      (setf (engine-history engine) '())
+      (setf (engine-setup engine) '()))
     nil))
 
 (def-command "clear_board" (server)
   (let ((engine (gtp-server-engine server)))
     (setf (engine-position engine)
           (make-position (position-size (engine-position engine))))
-    (setf (engine-undo-stack engine) '()))
+    (setf (engine-undo-stack engine) '())
+    (setf (engine-history engine) '())
+    (setf (engine-setup engine) '()))
   nil)
 
 (def-command "komi" (server)
@@ -152,6 +156,30 @@
     (error "Cannot undo"))
   nil)
 
+(def-command "loadsgf" (server)
+  (let* ((engine (gtp-server-engine server))
+         (filename (first args))
+         (stop (when (second args)
+                 (parse-integer (second args) :junk-allowed t))))
+    (unless filename
+      (error "loadsgf requires a filename"))
+    (let ((info (load-sgf-file filename)))
+      (apply-loaded-game engine info stop)))
+  nil)
+
+(def-command "printsgf" (server)
+  (let* ((engine (gtp-server-engine server))
+         (sgf (engine-to-sgf-text engine)))
+    (if args
+        (progn
+          (with-open-file (out (first args)
+                               :direction :output
+                               :if-exists :supersede
+                               :if-does-not-exist :create)
+            (write-string sgf out))
+          nil)
+        sgf)))
+
 (def-command "final_score" (server)
   (let ((engine (gtp-server-engine server)))
     (score-string (engine-position engine) :komi (engine-komi engine))))
@@ -174,20 +202,35 @@
   nil)
 
 (defun place-handicap-stones (engine n)
-  "Place N black handicap stones and give the turn to White."
-  (let ((pos (engine-position engine))
-        (size (position-size (engine-position engine))))
-    (dolist (idx (handicap-points size n))
+  "Place N standard black handicap stones and give the turn to White."
+  (let* ((pos (engine-position engine))
+         (size (position-size pos))
+         (stones (handicap-points size n)))
+    (engine-push-snapshot engine)
+    (dolist (idx stones)
       (try-play pos +black+ idx))
-    (setf (position-to-play pos) +white+)))
+    (setf (position-to-play pos) +white+)
+    (setf (engine-setup engine)
+          (mapcar (lambda (idx) (cons +black+ idx)) stones))
+    (setf (engine-history engine) '())
+    (setf (position-move-number pos) 0)))
 
-(defun place-free-handicap (engine vertices)
-  "Place black stones at VERTICES and give the turn to White."
-  (let ((pos (engine-position engine)))
-    (dolist (vertex vertices)
-      (let ((idx (vertex->index (position-size pos) vertex)))
-        (try-play pos +black+ idx)))
-    (setf (position-to-play pos) +white+)))
+(defun place-free-handicap (engine vertices &key (black-to-play nil))
+  "Place black stones at VERTICES.
+Give the turn to White unless BLACK-TO-PLAY is set."
+  (let* ((pos (engine-position engine))
+         (size (position-size pos)))
+    (engine-push-snapshot engine)
+    (let ((stones '()))
+      (dolist (vertex vertices)
+        (let ((idx (vertex->index size vertex)))
+          (try-play pos +black+ idx)
+          (push (cons +black+ idx) stones)))
+      (setf (position-to-play pos)
+            (if black-to-play +black+ +white+))
+      (setf (engine-setup engine) (nreverse stones))
+      (setf (engine-history engine) '())
+      (setf (position-move-number pos) 0))))
 
 (def-command "fixed_handicap" (server)
   (let* ((n (parse-integer (first args) :junk-allowed t))
@@ -202,7 +245,7 @@
   nil)
 
 (def-command "set_free_handicap" (server)
-  (place-free-handicap (gtp-server-engine server) args)
+  (place-free-handicap (gtp-server-engine server) args :black-to-play t)
   nil)
 
 (def-command "play_handicap" (server)
@@ -257,7 +300,8 @@
 
 (defun error-message (condition)
   "Return a readable one-line message for CONDITION."
-  (if (typep condition 'simple-condition)
+  (if (and (typep condition 'simple-condition)
+           (simple-condition-format-control condition))
       (apply #'format nil (simple-condition-format-control condition)
              (simple-condition-format-arguments condition))
       (princ-to-string condition)))

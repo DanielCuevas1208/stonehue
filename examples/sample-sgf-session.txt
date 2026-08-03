@@ -1,0 +1,43 @@
+Stonehue SGF save and load session
+===================================
+
+This transcript shows the record commands on a 9 by 9 board.
+The engine writes "= " for success. It writes "? " for an error.
+
+The engine plays three moves and saves the game. Then it loads
+the record back and shows the recovered position.
+
+Commands and replies
+--------------------
+
+boardsize 9
+komi 6.5
+play b D4
+play w F4
+play b D6
+printsgf /tmp/stonehue-demo.sgf
+printsgf
+= (;FF[4]GM[1]SZ[9]KM[6.5];B[df];W[ff];B[dd])
+clear_board
+loadsgf /tmp/stonehue-demo.sgf
+showboard
+=
+   A B C D E F G H J
+ 9 . . . . . . . . .
+ 8 . . . . . . . . .
+ 7 . . . . . . . . .
+ 6 . . . X . . . . .
+ 5 . . . . . . . . .
+ 4 . . . X . O . . .
+ 3 . . . . . . . . .
+ 2 . . . . . . . . .
+ 1 . . . . . . . . .
+
+final_score
+= W+5.5
+quit
+
+The engine ignores the "#" lines. Read them as comments.
+
+The printed record uses the Smart Game Format. Standard Go editors
+such as Sabaki and GoGui can open this file.

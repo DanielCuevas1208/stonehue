@@ -19,6 +19,7 @@ Stonehue is written in Common Lisp. It runs on SBCL with ASDF.
 - Opening pattern hints for the first moves
 - Handicap points and handicap commands
 - Deterministic search with a fixed random seed
+- SGF import and export for game records
 - A GTP server for standard Go tools
 
 ## Quick start
@@ -62,6 +63,29 @@ to the board. Use `showboard` to see the position.
 
 See `examples/sample-session.txt` for a full transcript.
 
+## Save and load games
+
+The engine saves a game as a Smart Game Format (SGF) record.
+Send `printsgf` to see the record. Add a filename to write it:
+
+```
+printsgf game.sgf
+```
+
+Load a record with `loadsgf`. The engine replays the moves:
+
+```
+loadsgf game.sgf
+```
+
+You can stop partway through the record. Add a move number:
+
+```
+loadsgf game.sgf 24
+```
+
+Standard Go editors open SGF files. Use the engine as a study tool.
+
 ## Engine controls
 
 The strength level sets the search budget.
@@ -72,6 +96,8 @@ The strength level sets the search budget.
 | `stonehue_seed N` | Sets the random seed |
 | `stonehue_opening` | Lists the opening hints |
 | `stonehue_analyze` | Lists the search results for the last move |
+| `loadsgf FILE [N]` | Loads an SGF record up to move N |
+| `printsgf [FILE]` | Prints the game as SGF, or writes it to FILE |
 | `time_settings M B S` | Sets main time, byo-yomi, and stones |
 | `kgs-time_settings M B S P` | KGS form with the periods value ignored |
 
@@ -91,7 +117,7 @@ The budget replaces the playout count.
 
 ## How it works
 
-The engine has ten modules.
+The engine has eleven modules.
 
 | Module | Purpose |
 | --- | --- |
@@ -100,7 +126,8 @@ The engine has ten modules.
 | `scoring` | Area scoring and final score strings |
 | `mcts` | Monte Carlo tree search |
 | `opening` | Opening pattern hints and handicap points |
-| `engine` | Engine state, strength, time controls |
+| `engine` | Engine state, strength, time controls, move history |
+| `sgf` | SGF import and export |
 | `gtp` | The GTP server |
 | `random` | A deterministic random generator |
 | `render` | ASCII board display |
@@ -141,8 +168,9 @@ Run this command:
 sbcl --load scripts/run-tests.lisp
 ```
 
-The suite covers the rules, the scoring, the search, and the protocol.
-It also replays the GTP fixtures in `examples/fixtures`.
+The suite covers the rules, the scoring, the search, the protocol, and
+the SGF records. It also replays the GTP fixtures in `examples/fixtures`.
+The current suite runs 2642 checks and reports no failures.
 
 Check for clean compilation with this command:
 
@@ -155,16 +183,20 @@ sbcl --load scripts/check-clean.lisp
 The examples folder holds sample data.
 
 - `examples/sample-session.txt` is a real GTP transcript.
+- `examples/sample-sgf-session.txt` shows the save and load commands.
 - `examples/sample-game.txt` is a full self-play game record.
+- `examples/sample-game.sgf` is a self-play game as an SGF record.
 - `examples/fixtures` holds GTP command files for the tests.
 
-The self-play record is sample data. It is not a claim about strength.
+The self-play records are sample data. They are not a claim about
+strength.
 
 ## Compatibility
 
 Stonehue follows the GTP version 2 specification. It implements the
 standard commands. It adds the handicap commands and the KGS time
-settings command. It adds `gogui-analyze_commands` for GoGui.
+settings command. It adds `loadsgf` and `printsgf` for game records.
+It adds `gogui-analyze_commands` for GoGui.
 
 Tested with these versions:
 
@@ -180,7 +212,7 @@ random playouts with a small budget.
 - The search values material only. Komi does not change the search.
 - Scoring does not remove dead stones.
 - There is no opening book beyond the pattern hints.
-- There is no SGF support.
+- The SGF parser reads the main line only. It ignores variations.
 - There is no pondering or parallel search.
 
 The GTP interface accepts boards from 3 by 3 to 19 by 19. The engine
@@ -188,9 +220,9 @@ core supports boards up to 25 by 25.
 
 ## Roadmap
 
-- Release 0.2 adds SGF import and export.
-- Release 0.3 adds a transposition table and pondering.
-- Release 0.4 adds pattern playouts for stronger play.
+Release 0.2.0 added SGF import and export.
+Release 0.3.0 will add a transposition table and pondering.
+Release 0.4.0 will add pattern playouts for stronger play.
 
 See `ROADMAP.md` for the full plan.
 

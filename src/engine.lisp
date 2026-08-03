@@ -16,7 +16,20 @@
   (opening-move-limit 4 :type fixnum)
   (max-branching nil)
   (undo-stack '())
+  (history '())   ; (color . move) pairs, newest first
+  (setup '())     ; (color . index) setup stones from a handicap
   (last-stats nil))
+
+(defun engine-push-snapshot (engine)
+  "Save the position, move history, and setup stones for an undo."
+  (push (list (position-copy (engine-position engine))
+              (engine-history engine)
+              (engine-setup engine))
+        (engine-undo-stack engine)))
+
+(defun engine-record-move (engine color move)
+  "Append MOVE for COLOR to the engine move history."
+  (push (cons color move) (engine-history engine)))
 
 (defun strength-iterations (strength)
   "Return the playout budget for a strength level from 1 to 5."
@@ -98,14 +111,17 @@ ITERATIONS and TIME-LIMIT override that budget when given."
   (let ((pos (engine-position engine)))
     (unless (eql color (position-to-play pos))
       (error "It is not ~a's turn" (color-name color)))
-    (push (position-copy pos) (engine-undo-stack engine))
-    (if (eq move :pass)
-        (pass-move pos color)
-        (unless (try-play pos color move)
-          (pop (engine-undo-stack engine))
-          (error "Illegal move ~a for ~a"
-                 (index->vertex (position-size pos) move)
-                 (color-name color)))))
+    (engine-push-snapshot engine)
+    (cond ((eq move :pass)
+           (pass-move pos color)
+           (engine-record-move engine color :pass))
+          ((try-play pos color move)
+           (engine-record-move engine color move))
+          (t
+           (pop (engine-undo-stack engine))
+           (error "Illegal move ~a for ~a"
+                  (index->vertex (position-size pos) move)
+                  (color-name color)))))
   engine)
 
 (defun engine-pass (engine color)
@@ -118,7 +134,7 @@ Apply the chosen move and return it. Return :PASS when the engine passes."
   (let ((pos (engine-position engine)))
     (unless (eql color (position-to-play pos))
       (error "It is not ~a's turn" (color-name color)))
-    (push (position-copy pos) (engine-undo-stack engine))
+    (engine-push-snapshot engine)
     (multiple-value-bind (move stats)
         (mcts-search pos
                      :iterations (engine-iterations engine)
@@ -133,13 +149,17 @@ Apply the chosen move and return it. Return :PASS when the engine passes."
       (if (eq move :pass)
           (pass-move pos color)
           (try-play pos color move))
+      (engine-record-move engine color move)
       move)))
 
 (defun engine-undo (engine)
   "Undo the last move. Return T on success and NIL when nothing to undo."
   (let ((snapshot (pop (engine-undo-stack engine))))
     (when snapshot
-      (setf (engine-position engine) snapshot)
+      (destructuring-bind (pos history setup) snapshot
+        (setf (engine-position engine) pos)
+        (setf (engine-history engine) history)
+        (setf (engine-setup engine) setup))
       t)))
 
 (defun engine-set-time-settings (engine main-time byo-yomi byo-yomi-stones)

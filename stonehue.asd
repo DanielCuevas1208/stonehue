@@ -7,7 +7,7 @@ tree search. It answers Go Text Protocol (GTP) commands so standard tools can
 play against it."
   :author "Stonehue contributors"
   :license "MIT"
-  :version "0.1.0"
+  :version "0.2.0"
   :serial t
   :components
   ((:module "src"
@@ -21,6 +21,7 @@ play against it."
      (:file "mcts")
      (:file "opening")
      (:file "engine")
+     (:file "sgf")
      (:file "gtp"))))
   :in-order-to ((asdf:test-op (asdf:test-op "stonehue/tests"))))
 
@@ -28,7 +29,7 @@ play against it."
   :description "The FiveAM test suite for Stonehue."
   :author "Stonehue contributors"
   :license "MIT"
-  :version "0.1.0"
+  :version "0.2.0"
   :depends-on ("stonehue" "fiveam")
   :serial t
   :components
@@ -42,6 +43,7 @@ play against it."
      (:file "mcts-tests")
      (:file "opening-tests")
      (:file "engine-tests")
+     (:file "sgf-tests")
      (:file "gtp-tests"))))
   :perform (asdf:test-op (op c)
              (uiop:symbol-call :stonehue/tests :run-tests)))

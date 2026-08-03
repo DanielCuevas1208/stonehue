@@ -81,6 +81,27 @@
     (process-line server "clear_board")
     (is (string= "= " (process-line server "place_free_handicap A2 B2 C2")))))
 
+(test gtp-handicap-turn-order
+  (let ((server (make-gtp-server)))
+    (process-line server "boardsize 9")
+    (process-line server "place_free_handicap A2 B2 C2")
+    (is (eql +white+
+             (position-to-play (engine-position (gtp-server-engine server)))))
+    (process-line server "clear_board")
+    (process-line server "set_free_handicap A2 B2 C2")
+    (is (eql +black+
+             (position-to-play (engine-position (gtp-server-engine server)))))))
+
+(test gtp-handicap-records-setup
+  (let ((server (make-gtp-server)))
+    (process-line server "boardsize 9")
+    (process-line server "fixed_handicap 4")
+    (is (= 4 (length (engine-setup (gtp-server-engine server)))))
+    (is (zerop (length (engine-move-list (gtp-server-engine server)))))
+    (let ((sgf (process-line server "printsgf")))
+      (is (search "AB[" sgf))
+      (is (search "PL[W]" sgf)))))
+
 (test gtp-showboard
   (let ((server (make-gtp-server)))
     (process-line server "boardsize 9")
@@ -137,6 +158,92 @@
   (merge-pathnames name
                    (merge-pathnames "examples/fixtures/"
                                     (asdf:system-source-directory :stonehue))))
+
+(defun temp-path (name)
+  "Return a path inside the system temporary directory."
+  (merge-pathnames name (uiop:temporary-directory)))
+
+(test gtp-loadsgf-missing-file
+  (let ((server (make-gtp-server)))
+    (process-line server "boardsize 9")
+    (is (search "?" (process-line server "loadsgf /no/such/file.sgf")))))
+
+(test gtp-loadsgf-and-printsgf-roundtrip
+  (let* ((path (temp-path "stonehue-gtp-roundtrip.sgf"))
+         (server (make-gtp-server)))
+    (unwind-protect
+         (progn
+           (process-line server "boardsize 9")
+           (process-line server "komi 6.5")
+           (process-line server "play b D4")
+           (process-line server "play w F4")
+           (process-line server "play b D6")
+           (is (string= "= "
+                        (process-line server
+                                      (format nil "printsgf ~a" path))))
+           (let ((sgf (process-line server "printsgf")))
+             (is (search "FF[4]" sgf))
+             (is (search "SZ[9]" sgf))
+             (is (search "B[df]" sgf))
+             (is (search "W[ff]" sgf))
+             (is (search "B[dd]" sgf)))
+           (process-line server "clear_board")
+           (is (string= "= "
+                        (process-line server
+                                      (format nil "loadsgf ~a" path))))
+           (is (= 3 (position-move-number
+                     (engine-position (gtp-server-engine server)))))
+           (is (= 3 (length (engine-move-list (gtp-server-engine server)))))
+           (is (string= "= W+5.5" (process-line server "final_score"))))
+      (ignore-errors (delete-file path)))))
+
+(test gtp-loadsgf-with-move-number
+  (let* ((path (temp-path "stonehue-gtp-partial.sgf"))
+         (server (make-gtp-server)))
+    (unwind-protect
+         (progn
+           (process-line server "boardsize 9")
+           (process-line server "play b D4")
+           (process-line server "play w F4")
+           (process-line server "play b D6")
+           (is (string= "= "
+                        (process-line server
+                                      (format nil "printsgf ~a" path))))
+           (process-line server "clear_board")
+           (is (string= "= "
+                        (process-line server
+                                      (format nil "loadsgf ~a 1" path))))
+           (is (= 1 (position-move-number
+                     (engine-position (gtp-server-engine server)))))
+           (is (eql +white+
+                    (position-to-play (engine-position (gtp-server-engine server))))))
+      (ignore-errors (delete-file path)))))
+
+(test gtp-loadsgf-unsupported-size
+  (let* ((path (temp-path "stonehue-gtp-badsize.sgf"))
+         (server (make-gtp-server)))
+    (unwind-protect
+         (progn
+           (with-open-file (out path :direction :output :if-exists :supersede)
+             (write-string "(;FF[4]GM[1]SZ[21])" out))
+           (is (search "?" (process-line server
+                                         (format nil "loadsgf ~a" path)))))
+      (ignore-errors (delete-file path)))))
+
+(test gtp-loadsgf-replays-pass-moves
+  (let* ((path (temp-path "stonehue-gtp-pass.sgf"))
+         (server (make-gtp-server)))
+    (unwind-protect
+         (progn
+           (with-open-file (out path :direction :output :if-exists :supersede)
+             (write-string "(;FF[4]GM[1]SZ[9]KM[6.5];B[dd];W[])" out))
+           (is (string= "= "
+                        (process-line server
+                                      (format nil "loadsgf ~a" path))))
+           (is (= 2 (position-move-number
+                     (engine-position (gtp-server-engine server)))))
+           (is (eql :pass (position-last-move (engine-position (gtp-server-engine server))))))
+      (ignore-errors (delete-file path)))))
 
 (defun replay-fixture (name)
   "Run every command in fixture NAME and return the list of replies."

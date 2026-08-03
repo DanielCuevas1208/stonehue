@@ -35,6 +35,31 @@
   (let ((engine (make-engine :size 9 :strength 1)))
     (is-false (engine-undo engine))))
 
+(test engine-history-records-moves
+  (let ((engine (make-engine :size 9 :strength 1)))
+    (engine-play engine +black+ (vertex->index 9 "D4"))
+    (engine-play engine +white+ (vertex->index 9 "F4"))
+    (engine-pass engine +black+)
+    (is (= 3 (length (engine-move-list engine))))
+    (is (equal (list (cons +black+ (vertex->index 9 "D4"))
+                     (cons +white+ (vertex->index 9 "F4"))
+                     (cons +black+ :pass))
+               (engine-move-list engine)))
+    (is-true (engine-undo engine))
+    (is (= 2 (length (engine-move-list engine))))
+    (is (equal (list (cons +black+ (vertex->index 9 "D4"))
+                     (cons +white+ (vertex->index 9 "F4")))
+               (engine-move-list engine)))))
+
+(test engine-genmove-records-history
+  (let ((engine (make-engine :size 9 :strength 1 :seed 5)))
+    (engine-genmove engine +black+)
+    (is (= 1 (length (engine-move-list engine))))
+    (is (= 1 (position-move-number (engine-position engine))))
+    (engine-undo engine)
+    (is (zerop (length (engine-move-list engine))))
+    (is (= 0 (position-move-number (engine-position engine))))))
+
 (test engine-strength-setting
   (let ((engine (make-engine :size 9 :strength 1)))
     (engine-set-strength engine 5)
