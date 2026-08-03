@@ -7,11 +7,24 @@ This folder contains sample data for Stonehue.
 `sample-session.txt` is a real GTP transcript. It shows every reply
 from a short game on a 9 by 9 board. Read it to learn the protocol.
 
+## SGF session
+
+`sample-sgf-session.txt` shows the save and load commands. The engine
+prints a game record and loads it back. Read it to learn `printsgf`
+and `loadsgf`.
+
 ## Sample game
 
 `sample-game.txt` is a full self-play game record. Two Stonehue
 instances played the game. The record lists the moves, the final
 board, and the result.
+
+`sample-game.sgf` is the same kind of game in the Smart Game Format.
+A fixed random seed created it. Run this command to make a new record:
+
+```
+sbcl --load scripts/save-game.lisp examples/sample-game.sgf
+```
 
 ## Fixtures
 

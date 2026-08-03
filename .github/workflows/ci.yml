@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     container: debian:bookworm-slim
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install SBCL and FiveAM
         run: |
           apt-get update
@@ -26,7 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     container: debian:bookworm-slim
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install SBCL
         run: |
           apt-get update
@@ -38,3 +38,10 @@ jobs:
       - name: Smoke test the engine
         run: |
           printf 'boardsize 9\nname\nversion\nplay b D4\ngenmove w\nshowboard\nquit\n' | ./build/stonehue.exe | grep -c '^='
+      - name: Smoke test SGF export
+        run: |
+          printf 'boardsize 9\nplay b D4\nplay w F4\nplay b D6\nprintsgf\nquit\n' | ./build/stonehue.exe | grep -q 'FF\[4\]'
+      - name: Smoke test SGF load
+        run: |
+          printf '(;FF[4]GM[1]SZ[9]KM[6.5];B[dd];W[ff];B[df])\n' > /tmp/sample.sgf
+          printf 'loadsgf /tmp/sample.sgf\nfinal_score\nquit\n' | ./build/stonehue.exe | grep -q 'W+5.5'
