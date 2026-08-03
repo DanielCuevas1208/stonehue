@@ -1,0 +1,30 @@
+# Common Lisp build artifacts
+*.fasl
+*.fas
+*.lx64fsl
+*.dx64fsl
+*.cfasl
+~/.cache/common-lisp/
+home/.cache/common-lisp/
+.bundle/
+
+# ASDF cache inside the project
+.asdf-cache/
+_build/
+
+# Lisp core dumps and images
+*.core
+*.mem
+sbcl.core
+
+# Build output
+build/
+dist/
+
+# Editor and OS cruft
+.vscode/
+.idea/
+*.swp
+*~
+Thumbs.db
+.DS_Store

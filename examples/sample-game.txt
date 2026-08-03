@@ -1,0 +1,41 @@
+Stonehue sample self-play game
+===============================
+
+Two Stonehue search instances played this game on a 9 by 9 board.
+Each move used 400 playouts with opening hints and a branching cap.
+The random generator started with seed 7.
+
+Board:    9 by 9
+Komi:     6.5
+Moves:    90
+Result:   White won by 13.5 points (area scoring)
+
+Move list (GTP notation)
+------------------------
+
+F6 D4 D6 E6 H8 H3 J4 C2 H5 G2
+A2 B3 E5 F2 E7 G3 J6 A3 E1 B8
+E3 B2 B6 D3 J7 B1 J8 A1 J5 B4
+A6 G9 F7 A7 B7 A8 H7 J2 E2 H1
+C8 J1 B9 F9 A9 F3 H9 G6 J9 F1
+D9 E4 D7 G5 B5 D2 E6 D1 F8 F4
+E9 A4 G8 H6 G9 G1 F9 A8 C9 C5
+E8 C6 D8 C7 B8 D5 C4 F5 H4 A5
+pass C3 pass J3 G4 C4 E1 E2 pass pass
+
+Final position (X is black, O is white)
+---------------------------------------
+
+   A B C D E F G H J
+ 9 X X X X X X X X X
+ 8 O X X X X X X X X
+ 7 . X O X X X . X X
+ 6 X X O X X X O O X
+ 5 O X O O X O O X X
+ 4 O O O O O O X X X
+ 3 O O O O . O O O O
+ 2 . O O O O O O . O
+ 1 O O . O . O O O O
+
+The game ended with two passes. The board shows the final territory.
+This record is sample data only. It is not a claim about engine strength.

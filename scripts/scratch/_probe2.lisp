@@ -1,0 +1,35 @@
+(require :asdf)
+(when (probe-file (merge-pathnames "quicklisp/setup.lisp"
+                                   (user-homedir-pathname)))
+  (load (merge-pathnames "quicklisp/setup.lisp"
+                         (user-homedir-pathname))))
+(asdf:load-asd (merge-pathnames "../../stonehue.asd"
+                                (or *load-pathname* *load-truename*)))
+(handler-bind ((warning #'muffle-warning))
+  (asdf:load-system :stonehue))
+(in-package :stonehue)
+
+(defun play-at (pos color vertex)
+  (setf (position-to-play pos) color)
+  (try-play pos color (vertex->index (position-size pos) vertex)))
+
+(let* ((pos (make-position 9)))
+  (play-at pos +black+ "E7")
+  (play-at pos +white+ "E6")
+  (play-at pos +black+ "D6")
+  (play-at pos +white+ "A1")
+  (play-at pos +black+ "F6")
+  (play-at pos +white+ "A2")
+  (dolist (v '("E5" "G9" "A9" "D9"))
+    (let ((sum 0.0d0) (n 200)
+          (rng (make-rng 1)))
+      (dotimes (i n)
+        (let ((child (position-copy pos)))
+          (try-play child +black+ (vertex->index 9 v))
+          (incf sum (playout-margin (let ((r (position-copy child)))
+                                      (dotimes (j 12 r)
+                                        (let ((m (random-move r rng)))
+                                          (if m
+                                              (try-play r (position-to-play r) m)
+                                              (pass-move r (position-to-play r))))))))))
+      (format t "~a avg-playout-margin=~,3f~%" v (/ sum n)))))

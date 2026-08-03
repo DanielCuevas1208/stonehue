@@ -1,0 +1,16 @@
+# Opening guidance and time controls on a 13 by 13 board.
+# The engine reports opening hints and chooses a move within the clock.
+# Byo-yomi is 30 seconds for 20 stones, so each move has 1.5 seconds.
+boardsize 13
+clear_board
+komi 7.5
+time_settings 0 30 20
+stonehue_seed 3
+stonehue_strength 2
+stonehue_opening
+play b D4
+play w D10
+play b K4
+genmove w
+final_score
+quit

@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    container: debian:bookworm-slim
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install SBCL and FiveAM
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends sbcl cl-fiveam git ca-certificates
+      - name: Check clean compilation
+        run: sbcl --noinform --disable-debugger --load scripts/check-clean.lisp
+      - name: Run the test suite
+        run: sbcl --noinform --disable-debugger --load scripts/run-tests.lisp
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    container: debian:bookworm-slim
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install SBCL
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends sbcl git ca-certificates
+      - name: Build the standalone engine
+        run: |
+          mkdir -p build
+          sbcl --noinform --disable-debugger --load scripts/build.lisp
+      - name: Smoke test the engine
+        run: |
+          printf 'boardsize 9\nname\nversion\nplay b D4\ngenmove w\nshowboard\nquit\n' | ./build/stonehue.exe | grep -c '^='

@@ -1,0 +1,14 @@
+# Simple ko rule: immediate recapture is illegal.
+# The sequence forces a ko fight at B3. The last command must fail.
+# White may not replay at B2 until a move is made elsewhere.
+boardsize 9
+play b A2
+play w B2
+play b B1
+play w A3
+play b C2
+play w C3
+play b G1
+play w B4
+play b B3
+play w B2

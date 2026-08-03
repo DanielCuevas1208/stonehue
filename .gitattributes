@@ -1,0 +1,8 @@
+# Normalize line endings for source files.
+* text=auto
+*.lisp text eol=lf
+*.asd text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.gtp text eol=lf

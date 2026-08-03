@@ -1,0 +1,28 @@
+# Changelog
+
+All notable changes to Stonehue appear in this file.
+The format follows the Keep a Changelog convention.
+This project uses semantic versioning.
+
+## Unreleased
+
+No changes yet.
+
+## 0.1.0 - 2026-08-03
+
+First coherent release.
+
+Added:
+
+- Boards from 3 by 3 to 19 by 19 over GTP
+- Capture rules with the simple ko rule
+- Simple Chinese area scoring with komi
+- Monte Carlo tree search with UCT
+- Five strength levels from 1 to 5
+- Time controls with main time and byo-yomi
+- Opening pattern hints for the first moves
+- Handicap points and handicap commands
+- GTP server with standard commands and GoGui support
+- Deterministic search with a fixed random seed
+- FiveAM test suite with fixture replay
+- Sample session and sample game in the examples folder

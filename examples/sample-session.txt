@@ -1,0 +1,155 @@
+Stonehue GTP sample session
+============================
+
+This transcript shows a real Stonehue session on a 9 by 9 board.
+Each line is a GTP command. The engine writes "= " for success.
+It writes "? " for an error. Standard Go tools use this protocol.
+
+The transcript uses strength 1 and a fixed random seed. The seed makes
+the replies repeatable. A different seed gives a different game.
+
+Commands and replies
+--------------------
+
+boardsize 9
+clear_board
+komi 6.5
+stonehue_seed 20240709
+stonehue_strength 1
+play b D4
+play w F4
+play b D6
+
+stonehue_opening
+= F6 0.95 Hoshi
+= E4 0.85 Komoku
+= E6 0.85 Komoku
+= D5 0.85 Komoku
+= F5 0.85 Komoku
+= E5 0.75 Takamoku
+= A5 0.40 Edge
+= E1 0.40 Edge
+= J5 0.40 Edge
+= E9 0.40 Edge
+= D3 0.35 Kakari
+= F3 0.35 Kakari
+= D7 0.35 Kakari
+= F7 0.35 Kakari
+= C4 0.35 Kakari
+= G4 0.35 Kakari
+= C6 0.35 Kakari
+= G6 0.35 Kakari
+= C3 0.25 Shimari
+= G3 0.25 Shimari
+= C7 0.25 Shimari
+= G7 0.25 Shimari
+= B2 0.10 Corner
+= H2 0.10 Corner
+= B8 0.10 Corner
+= H8 0.10 Corner
+
+genmove w
+= E4
+
+stonehue_analyze
+= H8 33 30 0.909
+= B8 33 29 0.879
+= H2 33 29 0.879
+= B2 33 29 0.879
+= G7 33 24 0.727
+= C7 33 24 0.727
+= G3 33 24 0.727
+= C3 33 24 0.727
+= F7 33 21 0.636
+= D7 33 21 0.636
+= G6 33 21 0.636
+= C6 33 21 0.636
+= G4 33 21 0.636
+= C4 33 21 0.636
+= F3 33 21 0.636
+= D3 33 21 0.636
+= J5 33 20 0.606
+= E9 33 19 0.576
+= A5 33 19 0.576
+= E1 33 19 0.576
+= F6 44 11 0.250
+= E6 42 11 0.262
+= F5 39 10 0.256
+= D5 39 10 0.256
+= E4 41 10 0.244
+= E5 34 9 0.265
+= J9 9 5 0.556
+= B9 9 5 0.556
+= G8 9 5 0.556
+= F8 9 5 0.556
+= J7 9 5 0.556
+= B7 9 5 0.556
+= H5 9 5 0.556
+= H4 9 5 0.556
+= B4 9 5 0.556
+= J2 9 5 0.556
+= C2 9 5 0.556
+= C1 9 5 0.556
+= B1 9 5 0.556
+= pass 9 5 0.556
+= H9 9 4 0.444
+= G9 9 4 0.444
+= F9 9 4 0.444
+= D9 9 4 0.444
+= C9 9 4 0.444
+= A9 9 4 0.444
+= J8 9 4 0.444
+= E8 9 4 0.444
+= D8 9 4 0.444
+= C8 9 4 0.444
+= A8 9 4 0.444
+= H7 9 4 0.444
+= E7 9 4 0.444
+= A7 9 4 0.444
+= J6 9 4 0.444
+= H6 9 4 0.444
+= B6 9 4 0.444
+= A6 9 4 0.444
+= G5 9 4 0.444
+= C5 9 4 0.444
+= B5 9 4 0.444
+= J4 9 4 0.444
+= A4 9 4 0.444
+= J3 9 4 0.444
+= H3 9 4 0.444
+= E3 9 4 0.444
+= B3 9 4 0.444
+= A3 9 4 0.444
+= G2 9 4 0.444
+= F2 9 4 0.444
+= E2 9 4 0.444
+= D2 9 4 0.444
+= A2 9 4 0.444
+= J1 9 4 0.444
+= H1 9 4 0.444
+= G1 9 4 0.444
+= F1 9 4 0.444
+= D1 9 4 0.444
+= A1 9 4 0.444
+
+showboard
+=
+   A B C D E F G H J
+ 9 . . . . . . . . .
+ 8 . . . . . . . . .
+ 7 . . . . . . . . .
+ 6 . . . X . . . . .
+ 5 . . . . . . . . .
+ 4 . . . X O O . . .
+ 3 . . . . . . . . .
+ 2 . . . . . . . . .
+ 1 . . . . . . . . .
+
+undo
+final_score
+= W+5.5
+quit
+
+The board shows the position after white moved at E4.
+The undo command removed that move before the final score.
+The score W+5.5 counts black 2, white 1, plus komi 6.5.

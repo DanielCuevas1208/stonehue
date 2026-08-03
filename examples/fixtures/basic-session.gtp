@@ -1,0 +1,22 @@
+# Basic Stonehue GTP session.
+# The test suite replays this file and expects no error replies.
+# The random seed makes the genmove reply repeatable.
+protocol_version
+name
+version
+known_command genmove
+known_command fly
+list_commands
+boardsize 9
+clear_board
+komi 6.5
+stonehue_seed 20240709
+stonehue_strength 1
+play b D4
+play w F4
+play b D6
+genmove w
+showboard
+undo
+final_score
+quit
