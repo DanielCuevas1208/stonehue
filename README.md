@@ -1,231 +1,284 @@
 # Stonehue
 
-Stonehue is a Go engine for small boards. It applies the capture rules
-and simple area scoring. It chooses moves with Monte Carlo tree search.
-It answers the Go Text Protocol (GTP).
+[![CI](https://github.com/DanielCuevas1208/stonehue/actions/workflows/ci.yml/badge.svg)](https://github.com/DanielCuevas1208/stonehue/actions/workflows/ci.yml)
 
-Standard Go tools can play against Stonehue. This includes Sabaki and
-GoGui. The engine runs on a board from 3 by 3 to 19 by 19.
+Stonehue is a small-board Go engine.
+It uses Monte Carlo tree search.
+It speaks the Go Text Protocol (GTP).
 
-Stonehue is written in Common Lisp. It runs on SBCL with ASDF.
+Stonehue runs on SBCL with ASDF.
+The test suite uses FiveAM.
+The codebase uses Common Lisp.
+
+## Value
+
+Stonehue gives Go tools a compact engine for small boards.
+It supports boards from 3 by 3 through 19 by 19 in GTP.
+
+Use it to:
+
+- play a local GTP game;
+- inspect legal moves and captures;
+- save and load SGF records;
+- inspect deterministic search output;
+- study a clear Common Lisp engine.
+
+The project makes no claim about competitive playing strength.
+Self-play files are sample data.
 
 ## Features
 
-- Capture rules with the simple ko rule
-- Simple Chinese area scoring with komi
-- Monte Carlo tree search with UCT
-- Five strength levels from 1 to 5
-- Time controls for real games
-- Opening pattern hints for the first moves
-- Handicap points and handicap commands
-- Deterministic search with a fixed random seed
-- SGF import and export for game records
-- A GTP server for standard Go tools
+- capture rules and simple ko;
+- Chinese-style area scoring with komi;
+- Monte Carlo tree search with UCT;
+- five strength levels;
+- fixed-seed deterministic search;
+- main time and byo-yomi budgets;
+- opening hints and handicap commands;
+- SGF main-line import and export;
+- GTP version 2 commands;
+- state-safe transposition statistics during each root search.
 
-## Quick start
+## Setup
 
-Install SBCL. Then run this command from the project root:
+Install SBCL.
+Install FiveAM through Quicklisp or the operating system package.
+Run commands from the repository root.
 
-```
+Start a GTP session:
+
+```text
 sbcl --load bin/stonehue.lisp
 ```
 
-The engine starts a GTP session. Send a GTP command on each line.
+Send one GTP command per line.
 Send `quit` to stop the session.
 
-The test suite uses FiveAM. Install FiveAM in one of two ways:
+Run the test suite:
 
-- Install Quicklisp. Quicklisp installs FiveAM automatically.
-- On Debian or Ubuntu, run `apt-get install cl-fiveam`.
-
-Then run this command:
-
-```
+```text
 sbcl --load scripts/run-tests.lisp
 ```
 
-## Play a game
+Check compilation warnings:
 
-Send this session to the engine:
-
+```text
+sbcl --load scripts/check-clean.lisp
 ```
+
+Build a standalone engine:
+
+```text
+sbcl --load scripts/build.lisp
+```
+
+The build writes `build/stonehue.exe`.
+The output directory is ignored by Git.
+
+## GTP session
+
+This short session uses standard commands.
+
+```text
 boardsize 9
 clear_board
 komi 6.5
 play b D4
 play w F4
-play b D6
-genmove w
+genmove b
+showboard
+quit
 ```
 
-The engine replies `= E4` or a similar vertex. It applies the move
-to the board. Use `showboard` to see the position.
+A small query returns this output:
 
-See `examples/sample-session.txt` for a full transcript.
-
-## Save and load games
-
-The engine saves a game as a Smart Game Format (SGF) record.
-Send `printsgf` to see the record. Add a filename to write it:
-
-```
-printsgf game.sgf
+```text
+name
+= Stonehue
+version
+= 0.2.0
+quit
+=
 ```
 
-Load a record with `loadsgf`. The engine replays the moves:
+See [examples/sample-session.txt](examples/sample-session.txt) for a complete transcript.
 
-```
-loadsgf game.sgf
+## Search evidence
+
+The search table lives for one root search.
+Equivalent states share visit and win counts.
+The state key includes these values:
+
+- board contents;
+- side to play;
+- move number;
+- simple-ko predecessor hash;
+- consecutive passes;
+- capture counts.
+
+Tree edges remain local to their parent nodes.
+This design keeps move analysis readable while sharing repeated-state evidence.
+
+The GTP extension `stonehue_search_info` reports the last search table.
+The public `mcts-search` function returns the same information as a third value.
+
+Run the deterministic evidence session:
+
+```text
+sbcl --load bin/stonehue.lisp < examples/search-info-session.txt
 ```
 
-You can stop partway through the record. Add a move number:
+The relevant output is:
 
-```
-loadsgf game.sgf 24
+```text
+= pass
+= transposition-hits 0
+transposition-entries 1
 ```
 
-Standard Go editors open SGF files. Use the engine as a study tool.
+The zero-iteration session records only its root state.
+It demonstrates the table contract without a performance claim.
 
 ## Engine controls
 
-The strength level sets the search budget.
-
-| Command | Effect |
+| Command | Purpose |
 | --- | --- |
-| `stonehue_strength N` | Sets the strength level from 1 to 5 |
-| `stonehue_seed N` | Sets the random seed |
-| `stonehue_opening` | Lists the opening hints |
-| `stonehue_analyze` | Lists the search results for the last move |
-| `loadsgf FILE [N]` | Loads an SGF record up to move N |
-| `printsgf [FILE]` | Prints the game as SGF, or writes it to FILE |
-| `time_settings M B S` | Sets main time, byo-yomi, and stones |
-| `kgs-time_settings M B S P` | KGS form with the periods value ignored |
+| `stonehue_strength N` | Select strength level 1 through 5 |
+| `stonehue_iterations N` | Set the exact MCTS iteration budget |
+| `stonehue_seed N` | Reset the deterministic random seed |
+| `stonehue_opening` | List opening hints |
+| `stonehue_analyze` | List root move statistics |
+| `stonehue_search_info` | Report transposition hits and entries |
+| `loadsgf FILE [N]` | Load an SGF main line |
+| `printsgf [FILE]` | Print or save the current SGF record |
+| `time_settings M B S` | Set main time, byo-yomi, and stones |
+| `kgs-time_settings M B S P` | Accept KGS time settings |
 
-The engine commands start with `stonehue_`. They extend the standard
-protocol. The strength levels map to playout counts:
+Strength levels use these default iteration budgets:
 
-| Level | Playouts |
-| --- | --- |
+| Level | Iterations |
+| --- | ---: |
 | 1 | 120 |
 | 2 | 400 |
-| 3 | 1000 |
-| 4 | 3000 |
-| 5 | 9000 |
+| 3 | 1,000 |
+| 4 | 3,000 |
+| 5 | 9,000 |
 
-With `time_settings`, the engine uses a wall-clock budget per move.
-The budget replaces the playout count.
+`stonehue_iterations` overrides the strength budget.
+Time settings use a wall-clock budget for each move.
 
-## How it works
+## Architecture
 
-The engine has eleven modules.
-
-| Module | Purpose |
+| Module | Responsibility |
 | --- | --- |
-| `board` | Board data and GTP coordinates |
-| `rules` | Position state, captures, ko, legal moves |
-| `scoring` | Area scoring and final score strings |
-| `mcts` | Monte Carlo tree search |
-| `opening` | Opening pattern hints and handicap points |
-| `engine` | Engine state, strength, time controls, move history |
-| `sgf` | SGF import and export |
-| `gtp` | The GTP server |
-| `random` | A deterministic random generator |
-| `render` | ASCII board display |
-| `packages` | Package and version |
+| `board` | Board storage and GTP coordinates |
+| `rules` | Positions, captures, ko, and legal moves |
+| `scoring` | Area scoring and result strings |
+| `mcts` | UCT search, playouts, and transposition stats |
+| `opening` | Opening hints and handicap points |
+| `engine` | Engine state, controls, history, and search evidence |
+| `sgf` | SGF parsing, writing, and replay |
+| `gtp` | GTP parsing, dispatch, and replies |
+| `random` | Seeded random number generation |
+| `render` | ASCII board output |
+| `packages` | Package names and version data |
 
-The `rules` module owns the game state. Each position holds the board
-and a small history. The history covers captures and the ko rule.
+The rules module owns mutable game state.
+The engine records moves outside the rules module.
+The search copies positions before simulations.
+The transposition table owns shared search statistics.
+The GTP layer converts conditions into protocol error replies.
 
-The `mcts` module searches the game tree. Each playout plays a short
-random game. A short game keeps the result close to the material
-balance. Captures then show clearly in the search.
+## SGF records
 
-The `opening` module biases the first moves. It rates the standard
-corner points. It also rates the center and the edges.
+Print the current game:
 
-The `engine` module ties the parts together. It tracks the position,
-the komi, and the search budget.
-
-The `gtp` module reads commands and writes replies. Each command is a
-function in a dispatch table. An unknown command gets an error reply.
-
-## Build a standalone engine
-
-Run this command:
-
+```text
+printsgf
 ```
+
+Save the current game:
+
+```text
+printsgf game.sgf
+```
+
+Load a record:
+
+```text
+loadsgf game.sgf
+```
+
+Load a partial main line:
+
+```text
+loadsgf game.sgf 24
+```
+
+See [examples/sample-sgf-session.txt](examples/sample-sgf-session.txt).
+
+## Tests and CI
+
+The FiveAM suite covers these areas:
+
+- board coordinates;
+- captures, suicide, and ko;
+- area scoring;
+- deterministic search;
+- engine history and undo;
+- transposition table state sharing;
+- GTP replies and fixtures;
+- SGF parsing, writing, and replay.
+
+The CI workflow runs clean compilation.
+It runs the FiveAM suite.
+It builds the standalone engine.
+It runs GTP and SGF smoke sessions.
+
+Run the full local checks:
+
+```text
+sbcl --load scripts/check-clean.lisp
+sbcl --load scripts/run-tests.lisp
 sbcl --load scripts/build.lisp
 ```
 
-The command writes `build/stonehue.exe`. The file is a standalone
-engine. It needs no Lisp image at runtime.
-
-## Run the tests
-
-Run this command:
-
-```
-sbcl --load scripts/run-tests.lisp
-```
-
-The suite covers the rules, the scoring, the search, the protocol, and
-the SGF records. It also replays the GTP fixtures in `examples/fixtures`.
-The current suite runs 2642 checks and reports no failures.
-
-Check for clean compilation with this command:
-
-```
-sbcl --load scripts/check-clean.lisp
-```
-
-## Sample data
-
-The examples folder holds sample data.
-
-- `examples/sample-session.txt` is a real GTP transcript.
-- `examples/sample-sgf-session.txt` shows the save and load commands.
-- `examples/sample-game.txt` is a full self-play game record.
-- `examples/sample-game.sgf` is a self-play game as an SGF record.
-- `examples/fixtures` holds GTP command files for the tests.
-
-The self-play records are sample data. They are not a claim about
-strength.
-
-## Compatibility
-
-Stonehue follows the GTP version 2 specification. It implements the
-standard commands. It adds the handicap commands and the KGS time
-settings command. It adds `loadsgf` and `printsgf` for game records.
-It adds `gogui-analyze_commands` for GoGui.
-
-Tested with these versions:
-
-- SBCL 2.2.9 and 2.6.7
-- FiveAM 1.4 (Quicklisp dist 2024-10-12)
-- ASDF 3.3 (bundled with SBCL)
-
 ## Limitations
 
-The engine is a first release. Play strength is low. The search uses
-random playouts with a small budget.
-
-- The search values material only. Komi does not change the search.
+- The search uses short random playouts.
+- The search values material during playouts.
+- Komi affects scoring but not playout value.
 - Scoring does not remove dead stones.
-- There is no opening book beyond the pattern hints.
-- The SGF parser reads the main line only. It ignores variations.
-- There is no pondering or parallel search.
-
-The GTP interface accepts boards from 3 by 3 to 19 by 19. The engine
-core supports boards up to 25 by 25.
+- The rules implement simple ko, not superko.
+- SGF replay follows the main line only.
+- SGF variations and rich properties are not preserved.
+- The transposition table resets for each root search.
+- Search tree reuse is not available yet.
+- Pondering and move interruption are not available.
+- The GTP interface accepts boards from 3 by 3 through 19 by 19.
+- The core accepts boards through 25 by 25.
 
 ## Roadmap
 
-Release 0.2.0 added SGF import and export.
-Release 0.3.0 will add a transposition table and pondering.
-Release 0.4.0 will add pattern playouts for stronger play.
+| Release | Status | Focus |
+| --- | --- | --- |
+| 0.2.0 | Complete | SGF records and replay |
+| 0.3.0 | In progress | Search depth and reusable search work |
+| 0.4.0 | Planned | Pattern-guided playouts |
+| 0.5.0 | Planned | Richer SGF records |
 
-See `ROADMAP.md` for the full plan.
+The 0.3.0 slice now includes state-safe transposition statistics.
+The remaining work includes tree reuse, pondering, and `gogui-interrupt`.
+
+See [ROADMAP.md](ROADMAP.md) for release details.
+
+## Test status
+
+CI checks are defined in `.github/workflows/ci.yml`.
+The last merged release passed its configured CI checks.
+Run the local commands above before proposing another release.
 
 ## License
 
-Stonehue is released under the MIT license. See `LICENSE`.
+Stonehue uses the MIT license.
+See [LICENSE](LICENSE).

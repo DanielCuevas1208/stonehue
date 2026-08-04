@@ -86,3 +86,10 @@
                (engine-play engine +white+ (vertex->index 9 "F4"))
                (engine-genmove engine +black+))))
     (is (equal (play-once) (play-once)))))
+
+(test engine-stores-search-info
+  (let ((engine (make-engine :size 9 :iterations 0)))
+    (is (eql :pass (engine-genmove engine +black+)))
+    (let ((info (engine-last-search-info engine)))
+      (is (= 0 (getf info :transposition-hits)))
+      (is (= 1 (getf info :transposition-entries))))))

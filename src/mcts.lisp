@@ -69,15 +69,70 @@ The board is not modified."
                (return-from find-capture i)))
     nil))
 
-(defstruct (mcts-node (:constructor %make-mcts-node (move to-play)))
+(defstruct (mcts-stats (:constructor %make-mcts-stats ()))
+  "Visit statistics shared by nodes that reach the same search state."
+  (plays 0 :type fixnum)
+  (wins 0 :type fixnum))
+
+(defstruct (mcts-table (:constructor make-mcts-table ()))
+  "Statistics for equivalent states reached during one root search."
+  (entries (make-hash-table :test #'equalp))
+  (hits 0 :type fixnum))
+
+(defun position-state-key (position)
+  "Return a collision-safe key for the state that affects legal play.
+The previous hash represents simple ko. Capture counts affect playout value."
+  (list (position-size position)
+        (copy-seq (position-board position))
+        (position-to-play position)
+        (position-move-number position)
+        (position-prev-hash position)
+        (position-consecutive-passes position)
+        (position-captures-black position)
+        (position-captures-white position)))
+
+(defun table-stats (table key)
+  "Return the stats for KEY and whether the table already contained KEY."
+  (multiple-value-bind (stats found-p)
+      (gethash key (mcts-table-entries table))
+    (if found-p
+        (incf (mcts-table-hits table))
+        (setf stats (%make-mcts-stats)
+              (gethash key (mcts-table-entries table)) stats))
+    (values stats found-p)))
+
+(defstruct (mcts-node (:constructor %make-mcts-node
+                                      (move to-play stats state-key)))
   move        ; NIL at the root, otherwise an index or :PASS
   to-play     ; the color to move at this node
-  (plays 0 :type fixnum)
-  (wins 0 :type fixnum)
+  stats       ; shared visit statistics for this position
+  state-key   ; stable key used by the transposition table
   (children '())        ; child nodes in expansion order
   (untried '())         ; candidate moves not yet expanded
   (hint-table nil)      ; opening prior weights, or NIL
   parent)
+
+(defun mcts-node-plays (node)
+  "Return the shared visit count for NODE."
+  (mcts-stats-plays (mcts-node-stats node)))
+
+(defun (setf mcts-node-plays) (value node)
+  (setf (mcts-stats-plays (mcts-node-stats node)) value))
+
+(defun mcts-node-wins (node)
+  "Return the shared win count for NODE."
+  (mcts-stats-wins (mcts-node-stats node)))
+
+(defun (setf mcts-node-wins) (value node)
+  (setf (mcts-stats-wins (mcts-node-stats node)) value))
+
+(defun make-search-node (move position table)
+  "Create a node and attach the stats record for POSITION."
+  (let ((key (position-state-key position)))
+    (multiple-value-bind (stats found-p) (table-stats table key)
+      (values (%make-mcts-node move (position-to-play position)
+                                stats key)
+              (not found-p)))))
 
 (defun win-for-p (color margin)
   "Return T when the player COLOR wins a game ending with MARGIN."
@@ -163,37 +218,41 @@ KOMI is reserved for future use and is not part of the playout value."
                    (try-play pos (position-to-play pos) move))))
     (playout-margin pos)))
 
-(defun expand-node (node pos rng opening-fn opening-move-limit max-branching)
-  "Expand one untried move of NODE and return the new child node.
-POS is the position at NODE. The child's position is left in POS."
+(defun expand-node (node pos rng opening-fn opening-move-limit max-branching
+                    table)
+  "Expand one untried move and share stats for repeated positions."
   (let* ((move (pop (mcts-node-untried node)))
          (opening-prior (and opening-fn
                              (< (position-move-number pos) opening-move-limit)
                              (gethash move (mcts-node-hint-table node))))
          (captures (and (integerp move)
                         (capture-count pos (position-to-play pos) move)))
-         (child (%make-mcts-node move nil)))
+         (child nil)
+         (fresh-p nil))
     (if (eq move :pass)
         (pass-move pos (position-to-play pos))
         (try-play pos (position-to-play pos) move))
-    (setf (mcts-node-to-play child) (position-to-play pos))
-    (let ((virtual-plays 8)
-          (virtual-wins 4))
-      (cond (opening-prior
-             ;; An opening hint is a strong prior on a good move. The
-             ;; count is sized so the hint survives the playout noise of
-             ;; a small search budget, yet fades as real evidence arrives.
-             (setf virtual-plays 32
-                   virtual-wins (max 0 (round (* 32 (- 1.0d0 opening-prior))))))
-            ((and captures (plusp captures))
-             ;; A move that captures stones is likely good for the mover.
-             ;; The child stores its value from the opponent's perspective,
-             ;; so a strong move gets a LOW child win rate.
-             (let ((quality (min 0.95d0 (+ 0.55d0 (* captures 0.15d0)))))
-               (setf virtual-plays 8
-                     virtual-wins (max 1 (round (* 8 (- 1.0d0 quality))))))))
-      (setf (mcts-node-plays child) virtual-plays
-            (mcts-node-wins child) virtual-wins))
+    (multiple-value-setq (child fresh-p) (make-search-node move pos table))
+    (when fresh-p
+      (let ((virtual-plays 8)
+            (virtual-wins 4))
+        (cond (opening-prior
+               ;; An opening hint is a strong prior on a good move. The
+               ;; count is sized so the hint survives the playout noise of
+               ;; a small search budget, yet fades as real evidence arrives.
+               (setf virtual-plays 32
+                     virtual-wins
+                     (max 0 (round (* 32 (- 1.0d0 opening-prior))))))
+              ((and captures (plusp captures))
+               ;; A move that captures stones is likely good for the mover.
+               ;; The child stores its value from the opponent's perspective,
+               ;; so a strong move gets a LOW child win rate.
+               (let ((quality (min 0.95d0 (+ 0.55d0 (* captures 0.15d0)))))
+                 (setf virtual-plays 8
+                       virtual-wins
+                       (max 1 (round (* 8 (- 1.0d0 quality))))))))
+        (setf (mcts-node-plays child) virtual-plays
+              (mcts-node-wins child) virtual-wins)))
     (setf (mcts-node-parent child) node)
     (push child (mcts-node-children node))
     (setf (mcts-node-untried child)
@@ -204,14 +263,15 @@ POS is the position at NODE. The child's position is left in POS."
                (funcall opening-fn pos)))
     child))
 
-(defun one-iteration (root position rng komi opening-fn opening-move-limit max-branching)
+(defun one-iteration (root position rng komi opening-fn opening-move-limit
+                      max-branching table)
   "Run one MCTS playout from ROOT at POSITION."
   (let ((node root)
         (pos (position-copy position)))
     (loop
       (cond ((mcts-node-untried node)
              (setf node (expand-node node pos rng opening-fn
-                                     opening-move-limit max-branching))
+                                     opening-move-limit max-branching table))
              (return))
             ((mcts-node-children node)
              (let ((child (select-child node)))
@@ -239,9 +299,14 @@ POS is the position at NODE. The child's position is left in POS."
                          (opening-move-limit 4)
                          (max-branching nil))
   "Search POSITION with Monte Carlo tree search.
-Return (values best-move stats) where STATS lists the root children
-as (move plays wins win-rate)."
-  (let* ((root (%make-mcts-node nil (position-to-play position))))
+Return best move, root stats, and transposition information.
+STATS lists root children as (move plays wins win-rate)."
+  (let* ((table (make-mcts-table))
+         (root-key (position-state-key position))
+         (root-stats (%make-mcts-stats))
+         (root (%make-mcts-node nil (position-to-play position)
+                                root-stats root-key)))
+    (setf (gethash root-key (mcts-table-entries table)) root-stats)
     (setf (mcts-node-untried root)
           (cons :pass (legal-moves position :max-branching max-branching :rng rng)))
     (setf (mcts-node-hint-table root)
@@ -254,8 +319,12 @@ as (move plays wins win-rate)."
       (loop for i from 1 to (max 0 iterations)
             while (or (null deadline) (< (get-internal-real-time) deadline))
             do (one-iteration root position rng komi opening-fn
-                              opening-move-limit max-branching)))
-    (values (select-best-move root) (mcts-analyze root))))
+                              opening-move-limit max-branching table)))
+    (values (select-best-move root)
+            (mcts-analyze root)
+            (list :transposition-hits (mcts-table-hits table)
+                  :transposition-entries
+                  (hash-table-count (mcts-table-entries table))))))
 
 (defun mcts-analyze (root)
   "Return a sorted list of (move plays wins win-rate) for the root children."

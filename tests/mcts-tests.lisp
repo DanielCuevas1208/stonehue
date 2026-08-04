@@ -87,3 +87,23 @@
           (is (plusp plays))
           (is (<= 0 rate 1))
           (is (<= 0 wins plays)))))))
+
+(test mcts-transposition-table-shares-state-stats
+  (let* ((table (stonehue::make-mcts-table))
+         (pos (make-position 9))
+         (key (stonehue::position-state-key pos)))
+    (multiple-value-bind (first fresh-p)
+        (stonehue::table-stats table key)
+      (multiple-value-bind (second repeated-p)
+          (stonehue::table-stats table (stonehue::position-state-key pos))
+        (is-true fresh-p)
+        (is-false repeated-p)
+        (is (eq first second))
+        (is (= 1 (stonehue::mcts-table-hits table)))))))
+
+(test mcts-search-reports-table-evidence
+  (multiple-value-bind (move stats info)
+      (mcts-search (make-position 9) :iterations 0 :rng (make-rng 5))
+    (declare (ignore move stats))
+    (is (= 0 (getf info :transposition-hits)))
+    (is (= 1 (getf info :transposition-entries)))))

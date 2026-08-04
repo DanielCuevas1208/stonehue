@@ -1,9 +1,13 @@
 name: CI
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
   pull_request:
+
+permissions:
+  contents: read
 
 jobs:
   test:
@@ -38,6 +42,13 @@ jobs:
       - name: Smoke test the engine
         run: |
           printf 'boardsize 9\nname\nversion\nplay b D4\ngenmove w\nshowboard\nquit\n' | ./build/stonehue.exe | grep -c '^='
+      - name: Smoke test search evidence
+        run: |
+          printf 'stonehue_iterations 0
+genmove b
+stonehue_search_info
+quit
+' | ./build/stonehue.exe | grep -q 'transposition-entries 1'
       - name: Smoke test SGF export
         run: |
           printf 'boardsize 9\nplay b D4\nplay w F4\nplay b D6\nprintsgf\nquit\n' | ./build/stonehue.exe | grep -q 'FF\[4\]'

@@ -26,6 +26,11 @@ A fixed random seed created it. Run this command to make a new record:
 sbcl --load scripts/save-game.lisp examples/sample-game.sgf
 ```
 
+## Search evidence
+
+`search-info-session.txt` runs a deterministic transposition table query through GTP.
+It uses zero iterations for a deterministic table count.
+
 ## Fixtures
 
 The fixtures folder holds GTP command files. The test suite replays

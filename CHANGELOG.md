@@ -6,7 +6,15 @@ This project uses semantic versioning.
 
 ## Unreleased
 
-No changes yet.
+Search depth slice.
+
+Added:
+
+- State-safe MCTS transposition statistics.
+- `stonehue_iterations` for exact search budgets.
+- `stonehue_search_info` for search table evidence.
+- Deterministic search, engine, and GTP tests.
+- A GTP session that demonstrates the table contract.
 
 ## 0.2.0 - 2026-08-03
 

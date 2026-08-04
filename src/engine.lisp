@@ -18,7 +18,8 @@
   (undo-stack '())
   (history '())   ; (color . move) pairs, newest first
   (setup '())     ; (color . index) setup stones from a handicap
-  (last-stats nil))
+  (last-stats nil)
+  (last-search-info nil))
 
 (defun engine-push-snapshot (engine)
   "Save the position, move history, and setup stones for an undo."
@@ -135,7 +136,7 @@ Apply the chosen move and return it. Return :PASS when the engine passes."
     (unless (eql color (position-to-play pos))
       (error "It is not ~a's turn" (color-name color)))
     (engine-push-snapshot engine)
-    (multiple-value-bind (move stats)
+    (multiple-value-bind (move stats search-info)
         (mcts-search pos
                      :iterations (engine-iterations engine)
                      :time-limit (engine-time-limit engine)
@@ -145,7 +146,8 @@ Apply the chosen move and return it. Return :PASS when the engine passes."
                                    'opening-hint-table)
                      :opening-move-limit (engine-opening-move-limit engine)
                      :max-branching (engine-max-branching engine))
-      (setf (engine-last-stats engine) stats)
+      (setf (engine-last-stats engine) stats
+            (engine-last-search-info engine) search-info)
       (if (eq move :pass)
           (pass-move pos color)
           (try-play pos color move))
