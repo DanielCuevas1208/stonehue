@@ -274,3 +274,15 @@
     (is (plusp (length replies)))
     (dolist (reply replies)
       (is (equal #\= (char reply 0))))))
+
+(test gtp-search-info
+  (let ((server (make-gtp-server :engine (make-engine :size 9 :iterations 0))))
+    (is (string= "= pass" (process-line server "genmove b")))
+    (let ((response (process-line server "stonehue_search_info")))
+      (is (search "transposition-hits 0" response))
+      (is (search "transposition-entries 1" response)))))
+(test gtp-iterations-setting
+  (let ((server (make-gtp-server)))
+    (is (string= "= " (process-line server "stonehue_iterations 0")))
+    (is (string= "? Unacceptable iteration count: nope"
+                 (process-line server "stonehue_iterations nope")))))

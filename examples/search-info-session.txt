@@ -1,0 +1,7 @@
+# Stonehue search evidence session.
+# Zero iterations keep the table count deterministic.
+boardsize 9
+stonehue_iterations 0
+genmove b
+stonehue_search_info
+quit

@@ -264,6 +264,13 @@ Give the turn to White unless BLACK-TO-PLAY is set."
                          (if level level 3)))
   nil)
 
+(def-command "stonehue_iterations" (server)
+  (let ((iterations (parse-integer (first args) :junk-allowed t)))
+    (unless (and iterations (<= 0 iterations))
+      (error "Unacceptable iteration count: ~a" (first args)))
+    (engine-set-iterations (gtp-server-engine server) iterations))
+  nil)
+
 (def-command "stonehue_seed" (server)
   (let* ((engine (gtp-server-engine server))
          (seed (parse-integer (first args))))
@@ -293,10 +300,18 @@ Give the turn to White unless BLACK-TO-PLAY is set."
                                   wins
                                   rate)))))
 
+(def-command "stonehue_search_info" (server)
+  (declare (ignore args))
+  (let ((info (engine-last-search-info (gtp-server-engine server))))
+    (format nil "transposition-hits ~d~%transposition-entries ~d"
+            (or (getf info :transposition-hits) 0)
+            (or (getf info :transposition-entries) 0))))
+
 (def-command "gogui-analyze_commands" (server)
   (declare (ignore server))
   (format nil "gfx/Stonehue opening/stonehue_opening~%~
-               plist/Stonehue analyze/stonehue_analyze"))
+               plist/Stonehue analyze/stonehue_analyze~%~
+               plist/Stonehue search info/stonehue_search_info"))
 
 (defun error-message (condition)
   "Return a readable one-line message for CONDITION."

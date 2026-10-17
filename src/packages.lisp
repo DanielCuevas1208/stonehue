@@ -78,6 +78,7 @@
    #:engine-time-limit
    #:engine-use-opening
    #:engine-last-stats
+   #:engine-last-search-info
    #:engine-history
    #:engine-setup
    #:engine-move-list
